@@ -1,6 +1,9 @@
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 
+let firebaseAdminApp;
+let dbInstance;
+
 function getFirebaseAdminConfig() {
   const {
     FIREBASE_PROJECT_ID,
@@ -19,10 +22,27 @@ function getFirebaseAdminConfig() {
   };
 }
 
-const firebaseAdminApp =
-  getApps()[0] ||
-  initializeApp({
-    credential: cert(getFirebaseAdminConfig()),
-  });
+function initializeFirebaseAdmin() {
+  if (!firebaseAdminApp) {
+    firebaseAdminApp = getApps()[0] || initializeApp({
+      credential: cert(getFirebaseAdminConfig()),
+    });
+  }
+  return firebaseAdminApp;
+}
 
-export const db = getFirestore(firebaseAdminApp);
+function getDbInstance() {
+  if (!dbInstance) {
+    initializeFirebaseAdmin();
+    dbInstance = getFirestore(firebaseAdminApp);
+  }
+  return dbInstance;
+}
+
+// Export a getter function instead of the direct instance
+export const db = new Proxy({}, {
+  get(target, prop) {
+    const db = getDbInstance();
+    return db[prop];
+  }
+});
